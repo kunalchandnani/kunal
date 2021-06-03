@@ -1,0 +1,128 @@
+Hosting a web application using Drupal and mariadb
+---------------------
+
+Step 1: -> Launch 5 instance named it Bastian, websever, webserver1, nfs and mysql
+
+Group settings rules:
+
+Bastian -> 1. ssh anywhere
+
+Webserver & webserver1 -> 1. ssh custom <bastian groupid>
+2. httpd anywhere
+
+NFS -> 1. ssh custom <bastian id>
+2. all traffic anywhere
+
+Mysql -> 1. ssh custom <bastian id>
+2. mysql/Arora custom 3306 <webserverid>
+
+Step 2: ->  make a .ssh/config file inside your localmachine
+and do edit using vi .ssh/config
+
+(inside config file) for both webserver,nfs,myql -> we not use port 22 here we will
+connect through bastian server. We only give public ip of bastian inside config file through bastian
+we will connect all server using there priavet ip
+
+for bastian
+{
+HostName "Bastian"
+     ec2-user "IP"
+     Port 22
+     IdentityFile /home/username/download/key-name
+}
+
+for nfs,webserver,mysql (replace port with proxycommand)
+{
+ec2-user "PrivateIP"
+->ProxyCommand ssh -W %h:%p bastian(host name of bastian)  [ %h - host . %p - port]
+}
+
+Step 3: -> Connect webserver instance
+
+-> yum install httpd, nfs, wget, mariadb, php*
+-> systemctl start mairadb, httpd, nfs
+-> wget https://ftp.drupal.org/files/projects/drupal-7.53.tar.gz
+-> tar -xvzf drupal-7.53.tar.gz
+-> cd drupal-7.53
+-> cp -R * /var/www/html (copying all contents of drupal in html)
+-> cd /var/www/html
+-> cd sites/default
+-> mkdir files
+-> chmod 777 files
+-> cp defaults.settings.php settings.php
+-> chmod 777 settings.php
+-> setenforce 0 (to disable SElinux)
+
+Go to Browser and put public ip of webserver it will show installation steps of drupal
+and follow steps as per instructions mentioned there.
+
+Step 4:- Connect mysql instance
+
+-> yum install mariadb*
+-> systemctl start mairadb
+-> mysql_secure_installation
+1st option we will enter only
+2. yes
+3. no
+4. no
+5. no
+6. yes
+
+-> mysql -u root -p
+password - 'root123'
+
+-> show databases;
+-> create database drupal;
+-> show databases;
+-> use drupal;
+-> create user vicky@'%' identified by 'password';
+-> grant all privileges on *.* to vicky@'%';
+-> flus privileges; (it will reload/modify all privileges)
+-> exit from mariadb
+-> setenforce 0
+
+Step 5: Launch nfs instance ( we make nfs share) 
+-> yum install nfs-utils -y
+-> yum install httpd
+-> systemctl start nfs
+-> mkdir /nfs_share
+-> vi /etc/exports
+/nfs_share *(rw,sync,no_root_squash)
+-> exportfs -a
+-> showmount -e localhost
+it will show nfs_share
+
+Step 6: Again connect webserver
+-> yum install nfs-utils
+-> systemctl start nfs
+-> mkdir /backup
+-> cd /var/www/html
+-> cp -R * /backup/
+-> mount ipadress:/nfs_share /var/www/html
+-> cd /backup/
+-> cp -R * /var/www/html
+-> cd /var/www/html
+ll
+it will show all ur drupal contents imported into nfs share
+
+Step 7: webserver1 (we will not install drupal using nfs share we import all content of drupal here
+so webserver1 can access drupal without any installation on browser using public ip)
+
+-> yum install httpd, php
+-> yum install nfs-utils
+-> systemctl start httpd, nfs
+-> mount ipadress:/nfs_share /var/www/html
+-> cd /var/www/html 
+-> ll ( you can find all contents now )
+
+Run public ip of webserver2 on browser. Now, you can access drupal by webserver without installing it
+again.
+------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
